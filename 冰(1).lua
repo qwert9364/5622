@@ -1,0 +1,722 @@
+https://chat.deepseek.com/share/a1sruavs38mg3nhwgud("Head")
+ if not r then return false end
+ local tc=tp:FindFirstAncestorOfClass("Model")
+ local o=r.Position local d=tp.Position-o
+ if d.Magnitude<0.1 then return true end
+ local p=RaycastParams.new()p.FilterType=Enum.RaycastFilterType.Exclude
+ local f={c}if tc then table.insert(f,tc)end
+ p.FilterDescendantsInstances=f p.IgnoreWater=true
+ return WS:Raycast(o,d,p)==nil
+end
+local function notify(t,x,d)WUI:Notify({Title=tostring(t),Content=tostring(x),Duration=d or 3})end
+local function nTg(n,s)WUI:Notify({Title=n,Content=s and "已开启" or "已关闭",Icon=s and "check" or "x",Duration=2})end
+local function getTP(c)
+ if not c then return nil end
+ local b=CFG.Aim.bodyPart
+ if b=="头部"then return c:FindFirstChild("Head")end
+ if b=="躯干"then return c:FindFirstChild("UpperTorso")or c:FindFirstChild("Torso")end
+ if b=="左臂"then return c:FindFirstChild("LeftUpperArm")or c:FindFirstChild("Left Arm")end
+ if b=="右臂"then return c:FindFirstChild("RightUpperArm")or c:FindFirstChild("Right Arm")end
+ if b=="左腿"then return c:FindFirstChild("LeftUpperLeg")or c:FindFirstChild("Left Leg")end
+ if b=="右腿"then return c:FindFirstChild("RightUpperLeg")or c:FindFirstChild("Right Leg")end
+ return nil
+end
+local function alive(p)local h=p.Character and p.Character:FindFirstChildOfClass("Humanoid")return h and h.Health>0 end
+local function inFOV(pos)
+ local cm=cam()if not cm then return false end
+ local vp=cm:WorldToViewportPoint(pos)
+ if vp.Z<=0 then return false end
+ return (Vector2.new(vp.X,vp.Y)-cm.ViewportSize/2).Magnitude<=CFG.Aim.fovsize
+end
+local function best()
+ local b,bp=nil,-math.huge local cm=cam()if not cm then return nil end
+ for _,p in ipairs(Players:GetPlayers())do
+  if p~=LP and alive(p) and not(CFG.Aimbot.IgnoreTeammate and isMate(p))then
+   local pt=getTP(p.Character)
+   if pt then
+    local d=(pt.Position-cm.CFrame.Position).Magnitude
+    if d<=CFG.Aim.distance then
+     local sp,vis=cm:WorldToViewportPoint(pt.Position)
+     local cr=vis and sp and(Vector2.new(sp.X,sp.Y)-cm.ViewportSize/2).Magnitude or math.huge
+     local pri=0
+     if CFG.Aim.priority=="Distance"then pri=-d
+     elseif CFG.Aim.priority=="Crosshair"then pri=-cr
+     elseif CFG.Aim.priority=="Speed"then pri=pt.AssemblyLinearVelocity.Magnitude
+     else pri=-d*0.5+pt.AssemblyLinearVelocity.Magnitude*0.3-cr*0.2 end
+     if bp<pri and(not CFG.Aim.wallCheck or los(pt))then bp=pri b=p end
+    end
+   end
+  end
+ end
+ return b
+end
+local function doAim()
+ if not CFG.Aimbot.Enabled then return end
+ if CFG.Aim.activate=="按住"and not UIS:IsKeyDown(CFG.Aim.hotkey)then return end
+ local t=best()if not t or not t.Character then return end
+ local pt=getTP(t.Character)if not pt then return end
+ if not inFOV(pt.Position)then return end
+ local cm=cam()if not cm then return end
+ local g=CFrame.new(cm.CFrame.Position,pt.Position)
+ if CFG.Aim.aimModeType=="强锁"then
+  cm.CFrame=g
+ else
+  local a=math.clamp((CFG.Aim.aimSpeed/10)*(1/CFG.Aim.smoothness),0.02,0.8)
+  cm.CFrame=cm.CFrame:Lerp(g,a)
+ end
+ pcall(function()cm.Focus=CFrame.new(cm.CFrame.Position+cm.CFrame.LookVector*100)end)
+end
+RS.RenderStepped:Connect(function()pcall(doAim)end)
+local EG=Instance.new("ScreenGui")EG.Name="CSGOESP"EG.ResetOnSpawn=false EG.IgnoreGuiInset=true EG.Parent=SG
+local EC={}
+local function mkE(p)
+ if EC[p]then if EC[p].bb then EC[p].bb:Destroy()end if EC[p].hl then EC[p].hl:Destroy()end EC[p]=nil end
+ local bb=Instance.new("BillboardGui")bb.Size=UDim2.new(0,130,0,70)bb.StudsOffset=Vector3.new(0,3.4,0)bb.AlwaysOnTop=true bb.MaxDistance=CFG.ESP.MaxDistance bb.Parent=EG
+ local rt=Instance.new("Frame")rt.Size=UDim2.new(1,0,1,0)rt.BackgroundTransparency=1 rt.Parent=bb
+ local nm=Instance.new("TextLabel")nm.Size=UDim2.new(1,0,0,16)nm.BackgroundTransparency=1 nm.Text=p.Name nm.TextColor3=Color3.new(1,1,1)nm.TextStrokeTransparency=0 nm.TextStrokeColor3=Color3.new(0,0,0)nm.Font=Enum.Font.GothamBold nm.TextSize=13 nm.Parent=rt
+ local hb=Instance.new("Frame")hb.Size=UDim2.new(1,-20,0,6)hb.Position=UDim2.new(0.5,0,0,18)hb.AnchorPoint=Vector2.new(0.5,0)hb.BackgroundColor3=Color3.fromRGB(20,20,20)hb.BorderSizePixel=0 hb.Parent=rt
+ Instance.new("UICorner",hb).CornerRadius=UDim.new(1,0)
+ local hf=Instance.new("Frame")hf.Size=UDim2.new(1,0,1,0)hf.BackgroundColor3=Color3.fromRGB(255,120,180)hf.BorderSizePixel=0 hf.Parent=hb
+ Instance.new("UICorner",hf).CornerRadius=UDim.new(1,0)
+ local dl=Instance.new("TextLabel")dl.Size=UDim2.new(1,0,0,14)dl.Position=UDim2.new(0,0,0,26)dl.BackgroundTransparency=1 dl.Text="0m"dl.TextColor3=Color3.fromRGB(200,200,200)dl.TextStrokeTransparency=0 dl.TextStrokeColor3=Color3.new(0,0,0)dl.Font=Enum.Font.Gotham dl.TextSize=11 dl.Parent=rt
+ local cl=Instance.new("TextLabel")cl.Size=UDim2.new(1,0,0,14)cl.Position=UDim2.new(0,0,0,40)cl.BackgroundTransparency=1 cl.Text="掩体: --"cl.TextColor3=Color3.new(1,1,1)cl.TextStrokeTransparency=0 cl.TextStrokeColor3=Color3.new(0,0,0)cl.Font=Enum.Font.GothamBold cl.TextSize=11 cl.Parent=rt
+ local hl=Instance.new("Highlight")hl.DepthMode=Enum.HighlightDepthMode.AlwaysOnTop hl.OutlineColor=Color3.fromRGB(255,120,180)hl.OutlineTransparency=0 hl.FillColor=Color3.fromRGB(255,120,180)hl.FillTransparency=0.5 hl.Enabled=false hl.Parent=EG
+ EC[p]={bb=bb,rt=rt,nm=nm,hf=hf,dl=dl,cl=cl,hl=hl}
+end
+local function rmE(p)
+ if EC[p]then if EC[p].bb then EC[p].bb:Destroy()end if EC[p].hl then EC[p].hl:Destroy()end EC[p]=nil end
+end
+RS.RenderStepped:Connect(function()
+ local cm=cam()if not cm then return end
+ for p,d in pairs(EC)do
+  if not p.Parent then rmE(p)continue end
+  local c=p.Character local hd=c and c:FindFirstChild("Head")local hm=c and c:FindFirstChildOfClass("Humanoid")
+  if not hd or not hm or hm.Health<=0 then d.rt.Visible=false if d.hl then d.hl.Enabled=false end continue end
+  local ds=(cm.CFrame.Position-hd.Position).Magnitude
+  if ds>CFG.ESP.MaxDistance then d.rt.Visible=false if d.hl then d.hl.Enabled=false end continue end
+  local mt=CFG.ESP.TeamCheck and isMate(p)
+  local hid=CFG.ESP.HideTeammate and mt
+  if not CFG.ESP.Enabled or hid then d.rt.Visible=false
+  else
+   local col=mt and Color3.fromRGB(120,220,130)or Color3.fromRGB(255,120,180)
+   d.bb.Adornee=hd d.bb.MaxDistance=CFG.ESP.MaxDistance d.rt.Visible=true
+   d.nm.Visible=CFG.ESP.ShowName d.nm.TextColor3=col
+   d.hf.Visible=CFG.ESP.ShowHealth
+   local hp=math.clamp(hm.Health/hm.MaxHealth,0,1)
+   d.hf.Size=UDim2.new(hp,0,1,0)
+   d.hf.BackgroundColor3=hp>0.6 and Color3.fromRGB(120,220,130)or hp>0.3 and Color3.fromRGB(255,200,0)or Color3.fromRGB(220,40,40)
+   d.dl.Visible=CFG.ESP.ShowDistance
+   if CFG.ESP.ShowDistance then d.dl.Text=string.format("%dm",math.floor(ds))end
+   if d.cl then
+    if CFG.ESP.ShowCover then
+     d.cl.Visible=true
+     local covered=not los(hd)
+     if covered then d.cl.Text="掩体: 有"d.cl.TextColor3=Color3.fromRGB(255,60,60)
+     else d.cl.Text="掩体: 无"d.cl.TextColor3=Color3.fromRGB(60,220,60)end
+    else d.cl.Visible=false end
+   end
+  end
+  if d.hl then
+   if CFG.ESP.Chams and not hid then
+    local bk=not los(hd)
+    if bk then
+     d.hl.Adornee=c d.hl.Enabled=true
+     d.hl.FillTransparency=CFG.ESP.ChamsFillTransparency
+     if CFG.ESP.ChamsTeamColor then
+      if mt then d.hl.FillColor=Color3.fromRGB(120,220,130)d.hl.OutlineColor=Color3.fromRGB(120,220,130)
+      else d.hl.FillColor=Color3.fromRGB(255,120,180)d.hl.OutlineColor=Color3.fromRGB(255,120,180)end
+     end
+    else d.hl.Enabled=false d.hl.Adornee=nil end
+   else d.hl.Enabled=false d.hl.Adornee=nil end
+  end
+ end
+end)
+Players.PlayerAdded:Connect(function(p)if p~=LP then mkE(p)end end)
+Players.PlayerRemoving:Connect(rmE)
+for _,p in ipairs(Players:GetPlayers())do if p~=LP then mkE(p)end end
+LP.CharacterAdded:Connect(function()task.wait(0.6)for _,p in ipairs(Players:GetPlayers())do if p~=LP and not EC[p]then mkE(p)end end end)
+local FL={C1=nil,C2=nil,W=false}
+local function bFL()
+ local c=LP.Character if not c then return end
+ local h=c:FindFirstChildOfClass("Humanoid")if not h then return end
+ if FL.C1 then pcall(function()FL.C1:Disconnect()end)end
+ if FL.C2 then pcall(function()FL.C2:Disconnect()end)end
+ FL.W=false
+ FL.C1=h.StateChanged:Connect(function(_,ns)
+  if ns==Enum.HumanoidStateType.Freefall then FL.W=true
+  elseif FL.W and(ns==Enum.HumanoidStateType.Landed or ns==Enum.HumanoidStateType.Running or ns==Enum.HumanoidStateType.GettingUp)then
+   FL.W=false if CFG.Fall.Enabled and h.Parent then pcall(function()h.Health=h.MaxHealth end)end
+  end
+ end)
+ FL.C2=h.HealthChanged:Connect(function()if CFG.Fall.Enabled and FL.W and h.Parent then pcall(function()h.Health=h.MaxHealth end)end end)
+end
+LP.CharacterAdded:Connect(function()task.wait(0.3)bFL()end)
+task.spawn(function()task.wait(0.5)bFL()end)
+local OrigSpeed=16
+local OrigJump=50
+local LastEnabled=false
+local LastJump=false
+task.spawn(function()
+ while task.wait(0.1)do
+  local c=LP.Character
+  if c then
+   local h=c:FindFirstChildOfClass("Humanoid")
+   if h then
+    if CFG.Movement.Enabled then
+     if not LastEnabled then OrigSpeed=h.WalkSpeed LastEnabled=true end
+     pcall(function()if h.WalkSpeed~=CFG.Movement.Speed then h.WalkSpeed=CFG.Movement.Speed end end)
+    else
+     if LastEnabled then pcall(function()h.WalkSpeed=OrigSpeed end)LastEnabled=false end
+    end
+    if CFG.Movement.JumpEnabled then
+     if not LastJump then
+      if h.UseJumpPower then OrigJump=h.JumpPower else OrigJump=h.JumpHeight end
+      LastJump=true
+     end
+     pcall(function()
+      if h.UseJumpPower then
+       if h.JumpPower~=CFG.Movement.JumpPower then h.JumpPower=CFG.Movement.JumpPower end
+      else
+       local t=CFG.Movement.JumpPower/7.5
+       if math.abs((h.JumpHeight or 0)-t)>0.1 then h.JumpHeight=t end
+      end
+     end)
+    else
+     if LastJump then
+      pcall(function()if h.UseJumpPower then h.JumpPower=OrigJump else h.JumpHeight=OrigJump end end)
+      LastJump=false
+     end
+    end
+   end
+  end
+ end
+end)
+LP.CharacterAdded:Connect(function()
+ task.wait(0.6)
+ local c=LP.Character
+ if c then
+  local h=c:FindFirstChildOfClass("Humanoid")
+  if h then
+   if not CFG.Movement.Enabled then pcall(function()h.WalkSpeed=16 end)end
+   if not CFG.Movement.JumpEnabled then pcall(function()if h.UseJumpPower then h.JumpPower=50 else h.JumpHeight=50/7.5 end end)end
+  end
+ end
+end)
+task.spawn(function()
+ while true do
+  RS.Stepped:Wait()
+  if not CFG.Movement.InfiniteJump or CFG.Movement.FlyEnabled then continue end
+  local c=LP.Character if not c then continue end
+  local h=c:FindFirstChildOfClass("Humanoid")
+  local r=c:FindFirstChild("HumanoidRootPart")
+  if not h or not r then continue end
+  if not UIS:IsKeyDown(Enum.KeyCode.Space) then continue end
+  pcall(function()h:SetStateEnabled(Enum.HumanoidStateType.Jumping,true)h:SetStateEnabled(Enum.HumanoidStateType.Freefall,true)end)
+  local v=r.AssemblyLinearVelocity
+  r.AssemblyLinearVelocity=Vector3.new(v.X,60,v.Z)
+ end
+end)
+local NCA=false
+local function apNC()
+ local c=LP.Character if not c then return end
+ for _,p in ipairs(c:GetDescendants())do if p:IsA("BasePart")then pcall(function()p.CanCollide=false end)end end
+ NCA=true
+end
+local function rmNC()
+ local c=LP.Character if not c then return end
+ for _,p in ipairs(c:GetDescendants())do if p:IsA("BasePart")then pcall(function()p.CanCollide=true end)end end
+ NCA=false
+end
+LP.CharacterAdded:Connect(function()NCA=false end)
+task.spawn(function()
+ while true do
+  RS.Stepped:Wait()
+  if not CFG.Movement.FlyNoClip then if NCA then rmNC()end continue end
+  local c=LP.Character if not c then continue end
+  local r=c:FindFirstChild("HumanoidRootPart")
+  local h=c:FindFirstChildOfClass("Humanoid")
+  if not r or not h then continue end
+  if not NCA then apNC()end
+  for _,p in ipairs(c:GetDescendants())do if p:IsA("BasePart")and p.CanCollide then pcall(function()p.CanCollide=false end)end end
+  local md=h.MoveDirection
+  if md.Magnitude<0.01 then continue end
+  local dir=Vector3.new(md.X,0,md.Z)
+  if dir.Magnitude<0.001 then continue end
+  dir=dir.Unit
+  local newPos=r.Position+dir*1.2
+  r.CFrame=CFrame.new(newPos,newPos+r.CFrame.LookVector)
+ end
+end)
+local FlyGui=Instance.new("ScreenGui")FlyGui.Name="NF_FlyCtrl"FlyGui.ResetOnSpawn=false FlyGui.DisplayOrder=150 FlyGui.IgnoreGuiInset=true FlyGui.Parent=SG
+local Pad=Instance.new("Frame")Pad.Size=UDim2.new(0,180,0,180)Pad.Position=UDim2.new(1,-200,1,-200)Pad.BackgroundColor3=Color3.fromRGB(30,25,40)Pad.BackgroundTransparency=0.35 Pad.BorderSizePixel=0 Pad.Visible=false Pad.Parent=FlyGui
+Instance.new("UICorner",Pad).CornerRadius=UDim.new(1,0)
+local PadStroke=Instance.new("UIStroke")PadStroke.Color=Color3.fromRGB(255,120,180)PadStroke.Thickness=2 PadStroke.Transparency=0.5 PadStroke.Parent=Pad
+local fu,fd,fl,fr=false,false,false,false
+local function mkB(s,p)
+ local b=Instance.new("TextButton")b.Size=UDim2.new(0,52,0,52)b.Position=p b.AnchorPoint=Vector2.new(0.5,0.5)
+ b.BackgroundColor3=Color3.fromRGB(50,45,65)b.BackgroundTransparency=0.2 b.Text=s b.TextColor3=Color3.new(1,1,1)
+ b.Font=Enum.Font.GothamBold b.TextSize=22 b.BorderSizePixel=0 b.AutoButtonColor=false b.Parent=Pad
+ Instance.new("UICorner",b).CornerRadius=UDim.new(1,0)return b
+end
+local bU=mkB("▲",UDim2.new(0.5,0,0,40))
+local bD=mkB("▼",UDim2.new(0.5,0,1,-40))
+local bL=mkB("◀",UDim2.new(0,40,0.5,0))
+local bR=mkB("▶",UDim2.new(1,-40,0.5,0))
+local function bindB(b,s)
+ b.InputBegan:Connect(function(i)if i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1 then s(true)b.BackgroundColor3=Color3.fromRGB(255,120,180)end end)
+ b.InputEnded:Connect(function(i)if i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1 then s(false)b.BackgroundColor3=Color3.fromRGB(50,45,65)end end)
+end
+bindB(bU,function(v)fu=v end)
+bindB(bD,function(v)fd=v end)
+bindB(bL,function(v)fl=v end)
+bindB(bR,function(v)fr=v end)
+local FBV,FBG,FA=nil,nil,false
+local function sFly()
+ local c=LP.Character if not c then return end
+ local r=c:FindFirstChild("HumanoidRootPart")local h=c:FindFirstChildOfClass("Humanoid")
+ if not r or not h then return end
+ FA=true h.PlatformStand=true
+ if not FBV or not FBV.Parent then FBV=Instance.new("BodyVelocity")FBV.MaxForce=Vector3.new(1e5,1e5,1e5)FBV.Parent=r end
+ if not FBG or not FBG.Parent then FBG=Instance.new("BodyGyro")FBG.MaxTorque=Vector3.new(1e5,1e5,1e5)FBG.P=10000 FBG.D=500 FBG.Parent=r end
+end
+local function stFly()
+ FA=false fu=false fd=false fl=false fr=false
+ local c=LP.Character if c then local h=c:FindFirstChildOfClass("Humanoid")if h then h.PlatformStand=false end end
+ if FBV then FBV:Destroy()FBV=nil end
+ if FBG then FBG:Destroy()FBG=nil end
+end
+task.spawn(function()
+ while true do
+  RS.RenderStepped:Wait()
+  if not CFG.Movement.FlyEnabled then
+   if FA then stFly()end
+   if Pad.Visible then Pad.Visible=false end
+   continue
+  end
+  if not Pad.Visible then Pad.Visible=true end
+  local c=LP.Character if not c then if FA then stFly()end continue end
+  local r=c:FindFirstChild("HumanoidRootPart")local h=c:FindFirstChildOfClass("Humanoid")
+  if not r or not h then if FA then stFly()end continue end
+  if not FA then sFly()end
+  if not FBV or not FBV.Parent then sFly()end
+  local cm=cam()if not cm then continue end
+  local camF=cm.CFrame.LookVector
+  local camR=cm.CFrame.RightVector
+  local camRH=Vector3.new(camR.X,0,camR.Z)
+  if camRH.Magnitude>0.001 then camRH=camRH.Unit else camRH=Vector3.new(1,0,0)end
+  local mv=Vector3.new(0,0,0)
+  local md=h.MoveDirection
+  if md.Magnitude>0.01 then mv=md*CFG.Movement.Speed end
+  local fv=Vector3.new(0,0,0)
+  if fu then fv=fv+Vector3.new(0,CFG.Movement.FlySpeed,0)end
+  if fd then fv=fv-Vector3.new(0,CFG.Movement.FlySpeed,0)end
+  if fl then fv=fv-camRH*CFG.Movement.FlySpeed end
+  if fr then fv=fv+camRH*CFG.Movement.FlySpeed end
+  if UIS:IsKeyDown(Enum.KeyCode.Space)then fv=fv+Vector3.new(0,CFG.Movement.FlySpeed,0)end
+  if UIS:IsKeyDown(Enum.KeyCode.LeftShift)then fv=fv-Vector3.new(0,CFG.Movement.FlySpeed,0)end
+  local fvv=mv+fv
+  if fvv.Magnitude<0.01 then fvv=Vector3.new(0,0,0)end
+  if FBV and FBV.Parent then FBV.Velocity=fvv end
+  if FBG and FBG.Parent then FBG.CFrame=CFrame.new(r.Position,r.Position+camF)end
+ end
+end)
+local Ghost={Conn=nil,Backup={}}
+local function applyGhost(char,on)
+ if not char then return end
+ local mode=CFG.Ghost.Mode
+ for _,obj in ipairs(char:GetDescendants())do
+  if obj:IsA("BasePart")then
+   if on then
+    if not Ghost.Backup[obj]then Ghost.Backup[obj]={T=obj.Transparency,M=obj.Material}end
+    if mode=="本地透明"then obj.LocalTransparencyModifier=1
+    elseif mode=="真隐身"then obj.Transparency=1 obj.LocalTransparencyModifier=1
+    elseif mode=="幽灵"then
+     obj.LocalTransparencyModifier=0.55
+     pcall(function()obj.Transparency=0.55 end)
+     pcall(function()obj.Material=Enum.Material.ForceField end)
+    end
+   else
+    local b=Ghost.Backup[obj]
+    if b then
+     pcall(function()obj.Transparency=b.T end)
+     pcall(function()obj.Material=b.M end)
+     Ghost.Backup[obj]=nil
+    end
+    obj.LocalTransparencyModifier=0
+   end
+  end
+ end
+end
+local function startGhost()
+ if Ghost.Conn then return end
+ Ghost.Conn=RS.RenderStepped:Connect(function()
+  if not CFG.Ghost.Enabled then return end
+  local c=LP.Character
+  if c then applyGhost(c,true) end
+ end)
+end
+local function stopGhost()
+ if Ghost.Conn then Ghost.Conn:Disconnect()Ghost.Conn=nil end
+ local c=LP.Character
+ if c then applyGhost(c,false)end
+ Ghost.Backup={}
+end
+LP.CharacterAdded:Connect(function()if CFG.Ghost.Enabled then task.wait(0.5)if CFG.Ghost.Enabled then startGhost()end end end)
+-- ==================== 预警 ====================
+local function hasGun(p)
+ if not p.Character then return false end
+ if p.Character:FindFirstChildOfClass("Tool")then return true end
+ local rh=p.Character:FindFirstChild("RightHand")or p.Character:FindFirstChild("Right Arm")
+ if rh then
+  for _,x in ipairs(rh:GetChildren())do
+   if x:IsA("BasePart")or x:IsA("MeshPart")or x:IsA("Model")then return true end
+  end
+ end
+ return false
+end
+local function aimAtMe(p)
+ if not p.Character or not LP.Character then return false,0 end
+ local myHrp=LP.Character:FindFirstChild("HumanoidRootPart")
+ local tHrp=p.Character:FindFirstChild("HumanoidRootPart")
+ local tHead=p.Character:FindFirstChild("Head")
+ if not myHrp or not tHrp or not tHead then return false,0 end
+ if not hasGun(p) then return false,0 end
+ if CFG.Warn.IgnoreTeammate and isMate(p) then return false,0 end
+ local dist=(myHrp.Position-tHrp.Position).Magnitude
+ if dist>CFG.Warn.Range then return false,0 end
+ local toMe=(myHrp.Position-tHrp.Position)
+ if toMe.Magnitude<0.1 then return false,0 end
+ toMe=toMe.Unit
+ local facing=tHrp.CFrame.LookVector
+ if facing:Dot(toMe)<0.85 then return false,0 end
+ local headFacing=tHead.CFrame.LookVector
+ if headFacing:Dot(toMe)<0.7 then return false,0 end
+ return true,dist
+end
+task.spawn(function()
+ while true do
+  task.wait(0.2)
+  if not CFG.Warn.On then continue end
+  local now=tick()
+  for _,p in ipairs(Players:GetPlayers())do
+   if p~=LP and alive(p) then
+    local at,dist=aimAtMe(p)
+    if at then
+     local last=CFG.Warn.Last[p] or 0
+     if now-last>CFG.Warn.Cooldown then
+      CFG.Warn.Last[p]=now
+      notify("⚠ 预警",string.format("%s 用枪对准了你！距离 %d studs",p.Name,math.floor(dist)),5)
+     end
+    end
+   end
+  end
+ end
+end)
+local OB={B=false}
+local function obsU(dt)
+ if not CFG.Obs.Active then return end
+ local t=CFG.Obs.Target
+ if not t or not t.Parent then return end
+ local cm=cam()if not cm then return end
+ local tc=t.Character if not tc then return end
+ local th=tc:FindFirstChild("Head")if not th then return end
+ local m=CFG.Obs.Mode local o=CFG.Obs.Offset local g
+ if m=="First"then g=CFrame.new(th.Position,th.Position+th.CFrame.LookVector)
+ elseif m=="Third"then local b=th.CFrame.LookVector*-(5+o)g=CFrame.lookAt(th.Position+b+Vector3.new(0,1.5,0),th.Position)
+ elseif m=="Top"then g=CFrame.lookAt(th.Position+Vector3.new(0,12+o,0),th.Position)
+ elseif m=="Side"then local r=th.CFrame.RightVector g=CFrame.lookAt(th.Position+r*(5+o)+Vector3.new(0,2,0),th.Position)
+ else return end
+ cm.CFrame=cm.CFrame:Lerp(g,math.min(dt*12,1))
+end
+local function sObs(t)
+ if not t or not t.Character or not t.Character:FindFirstChild("Head")then notify("观察","无效")return end
+ local cm=cam()if not cm then return end
+ CFG.Obs.Active=true CFG.Obs.Target=t cm.CameraType=Enum.CameraType.Scriptable
+ if OB.B then pcall(function()RS:UnbindFromRenderStep("YI_Obs")end)end
+ RS:BindToRenderStep("YI_Obs",Enum.RenderPriority.Camera.Value+1,obsU)
+ OB.B=true notify("观察","锁定 "..t.Name)
+end
+local function stopObs()
+ if not CFG.Obs.Active then return end
+ CFG.Obs.Active=false CFG.Obs.Target=nil
+ if OB.B then pcall(function()RS:UnbindFromRenderStep("YI_Obs")end)OB.B=false end
+ local cm=cam()if cm then cm.CameraType=Enum.CameraType.Custom local mc=LP.Character if mc then local mh=mc:FindFirstChildOfClass("Humanoid")if mh then cm.CameraSubject=mh end end end
+ notify("观察","退出")
+end
+Players.PlayerRemoving:Connect(function(p)if CFG.Obs.Active and CFG.Obs.Target==p then stopObs()end end)
+local skidFling=function(T)
+ local Character=LP.Character
+ local Humanoid=Character and Character:FindFirstChildOfClass("Humanoid")
+ local RootPart=Humanoid and Humanoid.RootPart
+ if not(Character and Humanoid and RootPart)then return false end
+ local TC=T.Character if not TC then return false end
+ local TH=TC:FindFirstChildOfClass("Humanoid")
+ local TR=TH and TH.RootPart
+ local THead=TC:FindFirstChild("Head")
+ if not TC:FindFirstChildWhichIsA("BasePart")then return false end
+ getgenv().__P=RootPart.CFrame
+ getgenv().__F=workspace.FallenPartsDestroyHeight
+ local function FPos(bp,pos,ang)
+  RootPart.CFrame=CFrame.new(bp.Position)*pos*ang
+  if Character.PrimaryPart then pcall(function()Character:SetPrimaryPartCFrame(CFrame.new(bp.Position)*pos*ang)end)end
+  RootPart.Velocity=Vector3.new(9e7,9e7*10,9e7)
+  RootPart.RotVelocity=Vector3.new(9e8,9e8,9e8)
+ end
+ local function SFBP(bp)
+  if not bp then return end
+  local TW=2 local T0=tick() local A=0
+  repeat
+   if RootPart and TH and bp.Parent then
+    if bp.Velocity.Magnitude<50 then
+     A=A+100
+     FPos(bp,CFrame.new(0,1.5,0)+TH.MoveDirection*bp.Velocity.Magnitude/1.25,CFrame.Angles(math.rad(A),0,0))task.wait()
+     FPos(bp,CFrame.new(0,-1.5,0)+TH.MoveDirection*bp.Velocity.Magnitude/1.25,CFrame.Angles(math.rad(A),0,0))task.wait()
+     FPos(bp,CFrame.new(2.25,1.5,-2.25)+TH.MoveDirection*bp.Velocity.Magnitude/1.25,CFrame.Angles(math.rad(A),0,0))task.wait()
+     FPos(bp,CFrame.new(-2.25,-1.5,2.25)+TH.MoveDirection*bp.Velocity.Magnitude/1.25,CFrame.Angles(math.rad(A),0,0))task.wait()
+    else
+     FPos(bp,CFrame.new(0,1.5,TH.WalkSpeed),CFrame.Angles(math.rad(90),0,0))task.wait()
+     FPos(bp,CFrame.new(0,-1.5,-TH.WalkSpeed),CFrame.Angles(0,0,0))task.wait()
+    end
+   else break end
+  until bp.Velocity.Magnitude>500 or bp.Parent~=TC or T.Parent~=Players or TH.Sit or Humanoid.Health<=0 or tick()>T0+TW
+ end
+ pcall(function()
+  workspace.FallenPartsDestroyHeight=0/0
+  local BV=Instance.new("BodyVelocity")BV.Parent=RootPart BV.Velocity=Vector3.new(9e8,9e8,9e8)BV.MaxForce=Vector3.new(1/0,1/0,1/0)
+  Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated,false)
+  if TR and THead then
+   if(TR.CFrame.p-THead.CFrame.p).Magnitude>5 then SFBP(THead)else SFBP(TR)end
+  elseif TR then SFBP(TR)
+  elseif THead then SFBP(THead)end
+  BV:Destroy()
+  Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated,true)
+ end)
+ task.wait(0.5)
+ pcall(function()
+  local cnt=0
+  repeat
+   RootPart.CFrame=getgenv().__P*CFrame.new(0,0.5,0)
+   if Character.PrimaryPart then pcall(function()Character:SetPrimaryPartCFrame(getgenv().__P*CFrame.new(0,0.5,0))end)end
+   pcall(function()Humanoid:ChangeState("GettingUp")end)
+   for _,x in ipairs(Character:GetChildren())do if x:IsA("BasePart")then x.Velocity,x.RotVelocity=Vector3.new(),Vector3.new()end end
+   cnt=cnt+1 task.wait()
+  until(RootPart.Position-getgenv().__P.p).Magnitude<25 or cnt>60
+  workspace.FallenPartsDestroyHeight=getgenv().__F
+ end)
+ return true
+end
+local function flailAll()
+ task.spawn(function()
+  local list={}
+  for _,p in ipairs(Players:GetPlayers())do if p~=LP then table.insert(list,p)end end
+  notify("甩全部","共 "..#list)
+  for _,p in ipairs(list)do if p.Character then pcall(function()skidFling(p)end)task.wait(0.3)end end
+  notify("甩全部","完成")
+ end)
+end
+local SF={A=false,BP=nil,BV=nil,BAV=nil}
+local function clSF()
+ if SF.BP then pcall(function()SF.BP:Destroy()end)SF.BP=nil end
+ if SF.BV then pcall(function()SF.BV:Destroy()end)SF.BV=nil end
+ if SF.BAV then pcall(function()SF.BAV:Destroy()end)SF.BAV=nil end
+ local c=LP.Character
+ if c then local h=c:FindFirstChildOfClass("Humanoid")if h then pcall(function()h.PlatformStand=false end)end end
+ SF.A=false
+end
+local function spFl(t)
+ if not t or not t.Character then notify("甩飞","无效")return end
+ if SF.A then notify("甩飞","进行中")return end
+ local tc=t.Character
+ local tr=tc:FindFirstChild("HumanoidRootPart")if not tr then notify("甩飞","无HRP")return end
+ local mc=LP.Character if not mc then return end
+ local mr=mc:FindFirstChild("HumanoidRootPart")if not mr then return end
+ local s=math.clamp(CFG.Spin.Strength,1,10)
+ local sp=s*80 local bpP=5000+s*2500 local mb=1+s*5 local dur=CFG.Spin.Duration local iv=1/(8+s*3)
+ SF.A=true
+ task.spawn(function()
+  for _,p in ipairs(mc:GetDescendants())do if p:IsA("BasePart")then pcall(function()p.CanCollide=true p.Massless=false end)end end
+  pcall(function()local pr=PhysicalProperties.new(1.0*mb,0.3,0.5,1,1)mr.CustomPhysicalProperties=pr end)
+  local mh=mc:FindFirstChildOfClass("Humanoid")if mh then pcall(function()mh.PlatformStand=true end)end
+  local bp=Instance.new("BodyPosition")bp.MaxForce=Vector3.new(1e7,1e7,1e7)bp.P=bpP bp.D=bpP*0.05 bp.Position=mr.Position bp.Parent=mr SF.BP=bp
+  local bv=Instance.new("BodyVelocity")bv.MaxForce=Vector3.new(1e6,1e6,1e6)bv.Parent=mr SF.BV=bv
+  local bav=Instance.new("BodyAngularVelocity")bav.MaxTorque=Vector3.new(1e6,1e6,1e6)bav.AngularVelocity=Vector3.new(0,80,0)bav.Parent=mr SF.BAV=bav
+  local t0=tick()local ls=-999
+  while SF.A and(tick()-t0<dur)do
+   if not mr.Parent or not tr.Parent then break end
+   if mh and mh.Parent and mh.Health<mh.MaxHealth then pcall(function()mh.Health=mh.MaxHealth end)end
+   local now=tick()local tPos=tr.Position
+   local d=tPos-mr.Position
+   if d.Magnitude<0.1 then d=Vector3.new(0,1,0)end
+   d=d.Unit local sd=(d+Vector3.new(0,0.6,0)).Unit
+   bp.Position=tPos+Vector3.new(0,1,0)
+   bv.Velocity=sd*sp
+   bav.AngularVelocity=Vector3.new(math.random(-80,80),80,math.random(-80,80))
+   if now-ls>=iv then ls=now bp.Position=tPos-sd*2.5+Vector3.new(0,1,0)end
+   RS.Stepped:Wait()
+  end
+  clSF()notify("甩飞","完成")
+ end)
+ notify("甩飞","强度 "..CFG.Spin.Strength.." → "..t.Name)
+end
+local function tpTo(p)
+ if not p or not p.Character then return end
+ local hd=p.Character:FindFirstChild("Head")or p.Character:FindFirstChild("HumanoidRootPart")
+ if not hd then return end
+ local mc=LP.Character if not mc then return end
+ local mr=mc:FindFirstChild("HumanoidRootPart")if not mr then return end
+ mr.CFrame=CFrame.new(hd.Position+Vector3.new(0,3,0))
+ notify("传送","已传送到 "..p.Name)
+end
+RS.Heartbeat:Connect(function()
+ if not CFG.Follow.Enabled then return end
+ local p=CFG.Follow.Target
+ if not p or not p.Parent or not p.Character then return end
+ local hd=p.Character:FindFirstChild("HumanoidRootPart")if not hd then return end
+ local mc=LP.Character if not mc then return end
+ local mr=mc:FindFirstChild("HumanoidRootPart")if not mr then return end
+ local back=hd.CFrame.LookVector*-5
+ mr.CFrame=CFrame.new(hd.Position+back+Vector3.new(0,2,0))
+end)
+local PLGui=Instance.new("ScreenGui")PLGui.Name="NF_PlayerList"PLGui.ResetOnSpawn=false PLGui.DisplayOrder=200 PLGui.Parent=SG
+local PLFrame=Instance.new("Frame")PLFrame.Name="List"PLFrame.Size=UDim2.fromOffset(220,400)PLFrame.Position=UDim2.new(0,20,0.5,-200)PLFrame.BackgroundColor3=Color3.fromRGB(20,20,25)PLFrame.BackgroundTransparency=0.15 PLFrame.BorderSizePixel=0 PLFrame.Visible=false PLFrame.Parent=PLGui
+Instance.new("UICorner",PLFrame).CornerRadius=UDim.new(0,10)
+local PLStroke=Instance.new("UIStroke")PLStroke.Color=Color3.fromHex("#ff78b4")PLStroke.Thickness=2 PLStroke.Parent=PLFrame
+local PLTitle=Instance.new("TextLabel")PLTitle.Size=UDim2.new(1,0,0,32)PLTitle.Position=UDim2.new(0,0,0,0)PLTitle.BackgroundTransparency=1 PLTitle.Text="玩家列表"PLTitle.TextColor3=Color3.fromHex("#ff78b4")PLTitle.Font=Enum.Font.GothamBold PLTitle.TextSize=16 PLTitle.Parent=PLFrame
+local PLClose=Instance.new("TextButton")PLClose.Size=UDim2.fromOffset(28,28)PLClose.Position=UDim2.new(1,-32,0,2)PLClose.BackgroundColor3=Color3.fromRGB(60,30,40)PLClose.BorderSizePixel=0 PLClose.Text="✕"PLClose.TextColor3=Color3.new(1,1,1)PLClose.Font=Enum.Font.GothamBold PLClose.TextSize=14 PLClose.Parent=PLFrame
+Instance.new("UICorner",PLClose).CornerRadius=UDim.new(0,6)
+PLClose.MouseButton1Click:Connect(function()PLFrame.Visible=false end)
+local PLScroll=Instance.new("ScrollingFrame")PLScroll.Size=UDim2.new(1,-16,1,-40)PLScroll.Position=UDim2.new(0,8,0,36)PLScroll.BackgroundTransparency=1 PLScroll.BorderSizePixel=0 PLScroll.ScrollBarThickness=4 PLScroll.CanvasSize=UDim2.new(0,0,0,0)PLScroll.AutomaticCanvasSize=Enum.AutomaticSize.Y PLScroll.Parent=PLFrame
+local PLLayout=Instance.new("UIListLayout")PLLayout.Padding=UDim.new(0,4)PLLayout.SortOrder=Enum.SortOrder.LayoutOrder PLLayout.Parent=PLScroll
+local function clearList()
+ for _,c in ipairs(PLScroll:GetChildren())do if c:IsA("Frame")or c:IsA("TextButton")then c:Destroy()end end
+end
+local function buildList()
+ clearList()
+ local all=Players:GetPlayers()
+ table.sort(all,function(a,b)
+  if a==LP then return true end
+  if b==LP then return false end
+  return a.Name:lower()<b.Name:lower()
+ end)
+ for _,p in ipairs(all)do
+  local row=Instance.new("Frame")row.Name="Row_"..p.Name row.Size=UDim2.new(1,0,0,32)row.BackgroundColor3=Color3.fromRGB(35,35,45)row.BackgroundTransparency=0.2 row.BorderSizePixel=0 row.Parent=PLScroll
+  Instance.new("UICorner",row).CornerRadius=UDim.new(0,6)
+  local nameBtn=Instance.new("TextButton")nameBtn.Size=UDim2.new(1,0,0,32)nameBtn.BackgroundTransparency=1 nameBtn.Text="  "..p.Name nameBtn.TextColor3=p==LP and Color3.fromHex("#ff78b4")or Color3.new(1,1,1)
+  nameBtn.Font=Enum.Font.GothamBold nameBtn.TextSize=13 nameBtn.TextXAlignment=Enum.TextXAlignment.Left nameBtn.Parent=row
+  local subFrame=Instance.new("Frame")subFrame.Size=UDim2.new(1,0,0,0)subFrame.Position=UDim2.new(0,0,0,32)subFrame.BackgroundTransparency=1 subFrame.ClipsDescendants=true subFrame.Parent=row
+  local subLayout=Instance.new("UIListLayout")subLayout.Padding=UDim.new(0,3)subLayout.Parent=subFrame
+  local function mkSub(text,color,cb)
+   local b=Instance.new("TextButton")b.Size=UDim2.new(1,0,0,26)b.BackgroundColor3=color b.BackgroundTransparency=0.25 b.BorderSizePixel=0 b.Text=text b.TextColor3=Color3.new(1,1,1)b.Font=Enum.Font.GothamBold b.TextSize=12 b.Parent=subFrame
+   Instance.new("UICorner",b).CornerRadius=UDim.new(0,5)
+   b.MouseButton1Click:Connect(cb)
+   return b
+  end
+  mkSub("  传送",Color3.fromRGB(60,120,200),function()tpTo(p)end)
+  mkSub("  持续追敌",Color3.fromRGB(200,140,40),function()
+   if CFG.Follow.Target==p and CFG.Follow.Enabled then
+    CFG.Follow.Enabled=false CFG.Follow.Target=nil notify("跟随","已停止")
+   else
+    CFG.Follow.Target=p CFG.Follow.Enabled=true notify("跟随","追踪 "..p.Name)
+   end
+  end)
+  mkSub("  甩飞",Color3.fromRGB(200,50,80),function()spFl(p)end)
+  local expanded=false
+  nameBtn.MouseButton1Click:Connect(function()
+   expanded=not expanded
+   if expanded then
+    subFrame:TweenSize(UDim2.new(1,0,0,90),"Out","Quad",0.15,true)
+    row:TweenSize(UDim2.new(1,0,0,122),"Out","Quad",0.15,true)
+   else
+    subFrame:TweenSize(UDim2.new(1,0,0,0),"Out","Quad",0.15,true)
+    row:TweenSize(UDim2.new(1,0,0,32),"Out","Quad",0.15,true)
+   end
+  end)
+ end
+end
+buildList()
+Players.PlayerAdded:Connect(function()task.wait(0.5)buildList()end)
+Players.PlayerRemoving:Connect(function()task.wait(0.5)buildList()end)
+local function getNames()local l={}for _,p in ipairs(Players:GetPlayers())do if p~=LP then table.insert(l,p.Name)end end return l end
+local W=WUI:CreateWindow({Title="奶佛脚本复活版",Icon="crosshair",Author="奶佛",Folder="CSGOAssist",Size=UDim2.fromOffset(680,480),Theme="Dark",User={Enabled=true,Anonymous=true,Callback=function()WUI:Notify({Title="关于",Content="奶佛脚本复活版",Duration=3})end},SideBarWidth=180,ScrollBarEnabled=true})
+local MS=W:Section({Title="主要功能",Opened=true})
+local AT=MS:Tab({Title="自瞄",Icon="crosshair"})
+local MT=MS:Tab({Title="移动",Icon="zap"})
+local ET=MS:Tab({Title="透视",Icon="eye"})
+local FT=MS:Tab({Title="甩飞",Icon="wind"})
+local OT=MS:Tab({Title="观察者",Icon="video"})
+local PT=MS:Tab({Title="玩家列表",Icon="users"})
+local WT=MS:Tab({Title="预警",Icon="alert-triangle"})
+local EFT=MS:Tab({Title="特效",Icon="sparkles"})
+AT:Toggle({Title="自瞄开关",Value=false,Callback=function(v)CFG.Aimbot.Enabled=v nTg("自瞄",v)end})
+AT:Toggle({Title="不瞄队友",Value=true,Callback=function(v)CFG.Aimbot.IgnoreTeammate=v end})
+AT:Dropdown({Title="锁定强度",Values={"普通","强锁"},Callback=function(v)CFG.Aim.aimModeType=v nTg("锁定强度",true)end})
+AT:Dropdown({Title="锁定部位",Values={"头部","躯干","左臂","右臂","左腿","右腿"},Callback=function(v)CFG.Aim.bodyPart=v end})
+AT:Dropdown({Title="优先级",Values={"Smart","Distance","Crosshair","Speed"},Callback=function(v)CFG.Aim.priority=v end})
+AT:Dropdown({Title="激活方式",Values={"自动","按住"},Callback=function(v)CFG.Aim.activate=v end})
+AT:Slider({Title="瞄准速度",Value={Min=1,Max=20,Default=5},Callback=function(v)CFG.Aim.aimSpeed=v end})
+AT:Slider({Title="平滑度",Value={Min=1,Max=20,Default=5},Callback=function(v)CFG.Aim.smoothness=v end})
+AT:Slider({Title="FOV",Value={Min=20,Max=500,Default=150},Callback=function(v)CFG.Aim.fovsize=v end})
+AT:Slider({Title="最大距离",Value={Min=50,Max=2000,Default=200},Callback=function(v)CFG.Aim.distance=v end})
+AT:Toggle({Title="掩体识别",Value=false,Callback=function(v)CFG.Aim.wallCheck=v end})
+MT:Toggle({Title="加速",Value=false,Callback=function(v)CFG.Movement.Enabled=v nTg("加速",v)end})
+MT:Slider({Title="移动速度",Value={Min=16,Max=300,Default=32},Callback=function(v)CFG.Movement.Speed=v end})
+MT:Toggle({Title="跳跃增强",Value=false,Callback=function(v)CFG.Movement.JumpEnabled=v nTg("跳跃",v)end})
+MT:Slider({Title="跳跃力",Value={Min=50,Max=300,Default=50},Callback=function(v)CFG.Movement.JumpPower=v end})
+MT:Toggle({Title="无限连跳",Value=false,Callback=function(v)CFG.Movement.InfiniteJump=v nTg("无限连跳",v)end})
+MT:Toggle({Title="飞行",Value=false,Callback=function(v)CFG.Movement.FlyEnabled=v nTg("飞行",v)end})
+MT:Slider({Title="飞行速度",Value={Min=20,Max=500,Default=60},Callback=function(v)CFG.Movement.FlySpeed=v end})
+MT:Toggle({Title="穿墙",Value=false,Callback=function(v)CFG.Movement.FlyNoClip=v nTg("穿墙",v)end})
+MT:Toggle({Title="免疫摔伤",Value=false,Callback=function(v)CFG.Fall.Enabled=v nTg("免疫摔",v)end})
+ET:Toggle({Title="透视开关",Value=false,Callback=function(v)CFG.ESP.Enabled=v nTg("透视",v)end})
+ET:Toggle({Title="队伍识别",Value=true,Callback=function(v)CFG.ESP.TeamCheck=v end})
+ET:Toggle({Title="屏蔽队友",Value=false,Callback=function(v)CFG.ESP.HideTeammate=v end})
+ET:Toggle({Title="显示名字",Value=true,Callback=function(v)CFG.ESP.ShowName=v end})
+ET:Toggle({Title="显示血量",Value=true,Callback=function(v)CFG.ESP.ShowHealth=v end})
+ET:Toggle({Title="显示距离",Value=false,Callback=function(v)CFG.ESP.ShowDistance=v end})
+ET:Toggle({Title="显示掩体状态",Value=true,Callback=function(v)CFG.ESP.ShowCover=v end})
+ET:Slider({Title="最大距离",Value={Min=100,Max=5000,Default=800},Callback=function(v)CFG.ESP.MaxDistance=v end})
+ET:Toggle({Title="Chams 内透",Value=false,Callback=function(v)CFG.ESP.Chams=v nTg("Chams",v)end})
+ET:Slider({Title="填充透明",Value={Min=0,Max=1,Default=0.5},Callback=function(v)CFG.ESP.ChamsFillTransparency=v end})
+local FDD=FT:Dropdown({Title="选择目标",Values=getNames(),Callback=function(v)for _,p in ipairs(Players:GetPlayers())do if p.Name==v then CFG.Spin.Target=p break end end end})
+FT:Button({Title="刷新",Callback=function()if type(FDD.Refresh)=="function"then pcall(function()FDD:Refresh(getNames())end)end end})
+FT:Slider({Title="强度",Value={Min=1,Max=10,Default=5},Callback=function(v)CFG.Spin.Strength=v end})
+FT:Slider({Title="持续",Value={Min=1,Max=10,Default=3},Callback=function(v)CFG.Spin.Duration=v end})
+FT:Button({Title="甩飞",Callback=function()spFl(CFG.Spin.Target)end})
+FT:Button({Title="停止",Callback=function()clSF()notify("甩飞","停止")end})
+FT:Divider()
+FT:Button({Title="SkidFling 单个",Callback=function()
+ local t=CFG.Spin.Target
+ if not t or not t.Character or t==LP then notify("单个","无效")return end
+ task.spawn(function()pcall(function()skidFling(t)end)end)
+end})
+FT:Button({Title="SkidFling 全部",Callback=function()flailAll()end})
+local ODD=OT:Dropdown({Title="选择目标",Values=getNames(),Callback=function(v)for _,p in ipairs(Players:GetPlayers())do if p.Name==v then CFG.Obs.Target=p break end end end})
+OT:Button({Title="刷新",Callback=function()if type(ODD.Refresh)=="function"then pcall(function()ODD:Refresh(getNames())end)end end})
+OT:Dropdown({Title="视角",Values={"First","Third","Top","Side"},Callback=function(v)CFG.Obs.Mode=v end})
+OT:Slider({Title="偏移",Value={Min=0,Max=20,Default=6},Callback=function(v)CFG.Obs.Offset=v end})
+OT:Button({Title="观察",Callback=function()sObs(CFG.Obs.Target)end})
+OT:Button({Title="退出",Callback=function()stopObs()end})
+PT:Toggle({Title="显示玩家列表",Value=false,Callback=function(v)PLFrame.Visible=v if v then buildList()end end})
+PT:Button({Title="刷新玩家列表",Callback=function()buildList()notify("玩家列表","已刷新")end})
+PT:Label({Title="点击玩家名字展开：传送 / 持续追敌 / 甩飞"})
+WT:Toggle({Title="开启预警",Value=false,Callback=function(v)CFG.Warn.On=v nTg("预警",v)end})
+WT:Slider({Title="检测范围",Value={Min=30,Max=500,Default=150},Callback=function(v)CFG.Warn.Range=v end})
+WT:Slider({Title="冷却时间(秒)",Value={Min=1,Max=15,Default=3},Callback=function(v)CFG.Warn.Cooldown=v end})
+WT:Toggle({Title="忽略队友",Value=true,Callback=function(v)CFG.Warn.IgnoreTeammate=v nTg("忽略队友",v)end})
+WT:Label({Title="当有玩家拿武器朝向你时，弹窗提醒。\n范围越大越灵敏，冷却越长越安静。"})
+EFT:Toggle({Title="夜视",Value=false,Callback=function(v)
+ local L=game:GetService("Lighting")
+ if v then
+  getgenv().__NV={B=L.Brightness,A=L.Ambient,OA=L.OutdoorAmbient,C=L.ClockTime,F=L.FogEnd}
+  L.Brightness=3 L.Ambient=Color3.fromRGB(180,180,180)L.OutdoorAmbient=Color3.fromRGB(180,180,180)L.ClockTime=14 L.FogEnd=100000
+  nTg("夜视",true)
+ else
+  local o=getgenv().__NV
+  if o then L.Brightness=o.B L.Ambient=o.A L.OutdoorAmbient=o.OA L.ClockTime=o.C L.FogEnd=o.F end
+  nTg("夜视",false)
+ end
+end})
+EFT:Divider()
+EFT:Toggle({Title="👻 隐身",Value=false,Callback=function(v)CFG.Ghost.Enabled=v if v then startGhost()notify("隐身","开")else stopGhost()notify("隐身","关")end end})
+EFT:Dropdown({Title="隐身模式",Values={"本地透明","真隐身","幽灵"},Callback=function(v)CFG.Ghost.Mode=v if CFG.Ghost.Enabled then stopGhost()task.wait(0.1)startGhost()end end})
+notify("奶佛脚本复活版","加载完成",3)
