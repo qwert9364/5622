@@ -1,4 +1,6 @@
-https://chat.deepseek.com/share/a1sruavs38mg3nhwgud("Head")
+local function los(tp)
+ local c=LP.Character if not c then return false end
+ local r=c:FindFirstChild("HumanoidRootPart")or c:FindFirstChild("Head")
  if not r then return false end
  local tc=tp:FindFirstAncestorOfClass("Model")
  local o=r.Position local d=tp.Position-o
